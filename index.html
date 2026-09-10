@@ -8,10 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-  // Version GitHub Pages autonome : remplace le stockage propre à Claude par localStorage.
-  // ⚠️ Les données restent uniquement sur cet appareil/navigateur, elles ne sont PAS
-  // synchronisées entre plusieurs téléphones. Pour une vraie synchro temps réel,
-  // il faudra brancher une base externe (ex. Firebase) à la place de ce bloc.
+ 
   window.storage = {
     async get(key, shared){
       const raw = localStorage.getItem(key);
