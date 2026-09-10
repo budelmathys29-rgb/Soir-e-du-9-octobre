@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soirée — Infos & Suivi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // Version GitHub Pages autonome : remplace le stockage propre à Claude par localStorage.
+  // ⚠️ Les données restent uniquement sur cet appareil/navigateur, elles ne sont PAS
+  // synchronisées entre plusieurs téléphones. Pour une vraie synchro temps réel,
+  // il faudra brancher une base externe (ex. Firebase) à la place de ce bloc.
+  window.storage = {
+    async get(key, shared){
+      const raw = localStorage.getItem(key);
+      if(raw === null){ throw new Error('Clé introuvable: ' + key); }
+      return {key, value: raw, shared: !!shared};
+    },
+    async set(key, value, shared){
+      localStorage.setItem(key, value);
+      return {key, value, shared: !!shared};
+    },
+    async delete(key, shared){
+      localStorage.removeItem(key);
+      return {key, deleted:true, shared: !!shared};
+    },
+    async list(prefix, shared){
+      const keys = Object.keys(localStorage).filter(k => !prefix || k.startsWith(prefix));
+      return {keys, prefix, shared: !!shared};
+    }
+  };
+</script>
+<style>
+  :root{
+    --bg:#120E28;
+    --surface:#1D1840;
+    --surface-2:#251E4E;
+    --text:#F4F1FC;
+    --muted:#A79FD1;
+    --pink:#FF3D7F;
+    --mint:#35F2C0;
+    --line:#332A63;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(circle at 15% 0%, #241C52 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:32px 16px 60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:2rem;
+    line-height:1.1;
+    margin:0 0 4px;
+  }
+  .sub{color:var(--muted);font-size:0.95rem;margin:0 0 28px;}
+  .tabs{display:flex;gap:8px;margin-bottom:24px;}
+  .tab-btn{
+    flex:1;
+    padding:12px 10px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--muted);
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:0.95rem;
+    cursor:pointer;
+    transition:transform .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .tab-btn.active{
+    color:var(--bg);
+    background:var(--mint);
+    border-color:var(--mint);
+  }
+  .tab-btn:active{transform:scale(0.97);}
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:22px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:1.1rem;
+    margin:0 0 14px;
+  }
+  label{display:block;font-size:0.85rem;color:var(--muted);margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=number], textarea{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--text);
+    padding:10px 12px;
+    font-family:'Inter',sans-serif;
+    font-size:0.95rem;
+    resize:vertical;
+  }
+  textarea{min-height:110px;}
+  .checkline{
+    display:flex;align-items:center;gap:10px;
+    margin:16px 0 4px;
+    padding:10px 12px;
+    background:var(--surface-2);
+    border-radius:10px;
+    border:1px solid var(--line);
+  }
+  .checkline input{width:18px;height:18px;accent-color:var(--pink);}
+  button.primary{
+    margin-top:18px;
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:12px;
+    background:var(--pink);
+    color:#1A0A14;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  button.ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:8px 12px;
+    border-radius:10px;
+    font-size:0.8rem;
+    cursor:pointer;
+  }
+  .qr-block{
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    padding:18px 0 4px;
+  }
+  .qr-box{background:#fff;padding:12px;border-radius:14px;}
+  .qr-caption{color:var(--muted);font-size:0.82rem;text-align:center;}
+  .info-line{display:flex;gap:10px;margin-bottom:10px;}
+  .info-line .ico{font-size:1.2rem;}
+  .info-line .val{color:var(--text);}
+  .info-line .val.empty{color:var(--muted);font-style:italic;}
+  pre.reglement{
+    white-space:pre-wrap;
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    margin:0;
+    line-height:1.5;
+  }
+  table{width:100%;border-collapse:collapse;margin-top:6px;}
+  th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);font-size:0.88rem;}
+  th{color:var(--muted);font-weight:500;font-size:0.75rem;text-transform:uppercase;letter-spacing:.03em;}
+  .vip-badge{
+    display:inline-block;background:var(--mint);color:#0B2A22;
+    font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:20px;
+  }
+  .stats{display:flex;gap:12px;margin-bottom:18px;}
+  .stat{
+    flex:1;background:var(--surface-2);border-radius:14px;padding:14px;text-align:center;
+    border:1px solid var(--line);
+  }
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:700;color:var(--mint);}
+  .stat .lbl{font-size:0.75rem;color:var(--muted);margin-top:2px;}
+  .footer-note{color:var(--muted);font-size:0.78rem;text-align:center;margin-top:22px;}
+  .pending-item{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;margin-bottom:8px;
+  }
+  .pending-actions{display:flex;gap:6px;}
+  .btn-approve{background:var(--mint);color:#0B2A22;border:none;border-radius:8px;padding:6px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;}
+  .btn-reject{background:transparent;color:var(--pink);border:1px solid var(--pink);border-radius:8px;padding:6px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;}
+  .hidden{display:none;}
+  .row-between{display:flex;justify-content:space-between;align-items:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="eventTitle">Soirée des jeunes</h1>
+  <p class="sub">Infos, règlement et suivi des consommations</p>
+  <p style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:0.82rem;margin-bottom:22px;">
+    ⚠️ Version autonome : les données de suivi (verres, VIP) sont enregistrées uniquement sur cet appareil, pas partagées entre plusieurs téléphones.
+  </p>
+
+  <div class="tabs">
+    <button class="tab-btn" id="btnInfos" onclick="showTab('infos')">Infos & Règlement</button>
+    <button class="tab-btn" id="btnVip" onclick="showTab('vip')">Devenir VIP</button>
+    <button class="tab-btn" id="btnSuivi" onclick="showTab('suivi')">Suivi conso & VIP</button>
+  </div>
+
+  <!-- TAB INFOS -->
+  <div id="tabInfos">
+    <div class="card">
+      <h2>Le lieu</h2>
+      <div class="info-line"><span class="ico">📍</span><span class="val" id="lieuView">Non renseigné</span></div>
+      <h2 style="margin-top:20px;">Règlement</h2>
+      <pre class="reglement" id="reglementView">Non renseigné</pre>
+    </div>
+
+    <div class="card">
+      <div class="row-between">
+        <h2 style="margin:0;">QR code — Infos</h2>
+        <button class="ghost hidden" id="btnEditInfos" onclick="toggleEdit()">✏️ Modifier</button>
+      </div>
+      <div class="qr-block">
+        <div class="qr-box" id="qrInfos"></div>
+        <p class="qr-caption">Ce QR code ouvre directement la page d'infos (lieu + règlement) pour les invités.</p>
+      </div>
+    </div>
+
+    <div class="card hidden" id="editCard">
+      <h2>Modifier les infos (organisateurs)</h2>
+      <label for="lieuInput">Lieu</label>
+      <input type="text" id="lieuInput" placeholder="Ex : Salle des fêtes, 12 rue des Lilas">
+      <label for="reglementInput">Règlement</label>
+      <textarea id="reglementInput" placeholder="Ex : Entrée 18-25 ans, pièce d'identité obligatoire, pas d'alcool pour les mineurs..."></textarea>
+      <label for="vipDescInput">Ce que comprend le statut VIP</label>
+      <textarea id="vipDescInput" placeholder="Ex : Accès à l'espace privé, 2 boissons offertes, coupe-file à l'entrée, vestiaire prioritaire..."></textarea>
+      <button class="primary" onclick="saveInfos()">Enregistrer les infos</button>
+    </div>
+  </div>
+
+  <!-- TAB VIP (public) -->
+  <div id="tabVip" class="hidden">
+    <div class="card">
+      <h2>Ce que comprend le statut VIP</h2>
+      <pre class="reglement" id="vipDescView">Non renseigné</pre>
+    </div>
+
+    <div class="card">
+      <h2>Demander le statut VIP</h2>
+      <p class="qr-caption" style="text-align:left;margin-bottom:14px;">Envoie ta demande, l'organisation la valide ou non avant la soirée ou à l'entrée.</p>
+      <label for="vipReqNom">Ton nom</label>
+      <input type="text" id="vipReqNom" placeholder="Ex : Léa Martin">
+      <button class="primary" onclick="submitVipRequest()">Envoyer ma demande</button>
+      <p id="vipReqConfirm" class="hidden" style="color:var(--mint);font-size:0.85rem;margin-top:12px;">Demande envoyée ✓ Tu seras informé·e par l'organisation.</p>
+    </div>
+
+    <div class="card">
+      <h2>Vérifier ma demande</h2>
+      <label for="vipCheckNom">Ton nom</label>
+      <input type="text" id="vipCheckNom" placeholder="Ex : Léa Martin">
+      <button class="ghost" style="margin-top:14px;" onclick="checkVipStatus()">Voir mon statut</button>
+      <p id="vipCheckResult" class="qr-caption" style="text-align:left;margin-top:12px;"></p>
+    </div>
+  </div>
+
+  <!-- TAB SUIVI -->
+  <div id="tabSuivi" class="hidden">
+
+    <!-- Verrou organisateur -->
+    <div class="card" id="suiviLock">
+      <h2>Accès organisateurs 🔒</h2>
+      <p class="qr-caption" style="text-align:left;margin-bottom:14px;">Cet espace est réservé aux organisateurs. Entre le code pour accéder au suivi des consommations et des VIP.</p>
+      <label for="pinInput">Code d'accès</label>
+      <input type="text" inputmode="numeric" id="pinInput" placeholder="••••" maxlength="8">
+      <button class="primary" onclick="checkPin()">Déverrouiller</button>
+      <p id="pinError" class="hidden" style="color:var(--pink);font-size:0.85rem;margin-top:10px;">Code incorrect, réessaie.</p>
+    </div>
+
+    <!-- Contenu protégé -->
+    <div id="suiviContent" class="hidden">
+      <div class="stats">
+        <div class="stat"><div class="num" id="statVerres">0</div><div class="lbl">Verres servis</div></div>
+        <div class="stat"><div class="num" id="statVip">0</div><div class="lbl">Personnes VIP</div></div>
+        <div class="stat"><div class="num" id="statPersonnes">0</div><div class="lbl">Personnes enregistrées</div></div>
+      </div>
+
+      <div class="card">
+        <div class="row-between">
+          <h2 style="margin:0;">Demandes VIP en attente</h2>
+        </div>
+        <div id="pendingVipList" style="margin-top:10px;">
+          <p style="color:var(--muted);font-size:0.88rem;">Aucune demande en attente.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Enregistrer une consommation</h2>
+        <label for="nomInput">Nom de la personne</label>
+        <input type="text" id="nomInput" placeholder="Ex : Léa Martin">
+        <label for="verresInput">Nombre de verres pris</label>
+        <input type="number" id="verresInput" min="0" step="1" value="1">
+        <div class="checkline">
+          <input type="checkbox" id="vipInput">
+          <label style="margin:0;color:var(--text);" for="vipInput">Personne VIP</label>
+        </div>
+        <button class="primary" onclick="addEntry()">Ajouter</button>
+      </div>
+
+      <div class="card">
+        <div class="row-between">
+          <h2 style="margin:0;">QR code — Formulaire</h2>
+          <button class="ghost" onclick="toggleEdit()">✏️ Infos</button>
+        </div>
+        <div class="qr-block">
+          <div class="qr-box" id="qrSuivi"></div>
+          <p class="qr-caption">Ce QR code ouvre directement cet espace (protégé par code) pour ajouter une consommation.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row-between">
+          <h2 style="margin:0;">Liste des personnes</h2>
+          <button class="ghost" onclick="resetEntries()">🗑️ Tout effacer</button>
+        </div>
+        <table id="entriesTable">
+          <thead><tr><th>Nom</th><th>Verres</th><th>VIP</th></tr></thead>
+          <tbody id="entriesBody"><tr><td colspan="3" style="color:var(--muted);">Aucune entrée pour l'instant.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer-note">Ces informations sont partagées : tout le monde ayant accès à cette page peut les voir et les modifier.</p>
+</div>
+
+<script>
+const STORAGE_INFO_KEY = 'event-info';
+const STORAGE_INDEX_KEY = 'entries-index';
+// Change ce code avant de partager la page avec l'équipe d'organisation.
+const ADMIN_PIN = '2026';
+let isAdmin = false;
+
+function checkPin(){
+  const val = document.getElementById('pinInput').value.trim();
+  if(val === ADMIN_PIN){
+    isAdmin = true;
+    document.getElementById('suiviLock').classList.add('hidden');
+    document.getElementById('suiviContent').classList.remove('hidden');
+    document.getElementById('btnEditInfos').classList.remove('hidden');
+    document.getElementById('pinError').classList.add('hidden');
+    loadPendingVipRequests();
+  }else{
+    document.getElementById('pinError').classList.remove('hidden');
+  }
+}
+
+function baseUrl(){
+  return window.location.origin + window.location.pathname;
+}
+
+function showTab(tab){
+  document.getElementById('tabInfos').classList.toggle('hidden', tab!=='infos');
+  document.getElementById('tabVip').classList.toggle('hidden', tab!=='vip');
+  document.getElementById('tabSuivi').classList.toggle('hidden', tab!=='suivi');
+  document.getElementById('btnInfos').classList.toggle('active', tab==='infos');
+  document.getElementById('btnVip').classList.toggle('active', tab==='vip');
+  document.getElementById('btnSuivi').classList.toggle('active', tab==='suivi');
+  window.location.hash = tab;
+}
+
+function toggleEdit(){
+  if(!isAdmin){ showTab('suivi'); return; }
+  document.getElementById('editCard').classList.toggle('hidden');
+}
+
+const DEFAULT_REGLEMENT = `1. Accès réservé aux personnes majeures ou dans la tranche d'âge indiquée sur l'invitation. Pièce d'identité obligatoire à l'entrée.
+2. La direction se réserve le droit d'entrée et peut refuser l'accès sans justification.
+3. Fouille et contrôle de sécurité possibles à l'entrée. Objets dangereux, armes et substances illicites strictement interdits.
+4. Vente et consommation d'alcool interdites aux mineurs. Toute personne en état d'ivresse manifeste pourra se voir refuser l'entrée ou être évacuée.
+5. Toute drogue est interdite dans l'établissement. Tout contrevenant sera exclu et remis aux autorités si nécessaire.
+6. Respect du personnel, du DJ/staff et des autres participants. Tout comportement violent, agressif ou discriminatoire entraîne une exclusion immédiate.
+7. Photos et vidéos autorisées uniquement avec le consentement des personnes filmées ou photographiées.
+8. Zone fumeur désignée uniquement. Interdiction de fumer à l'intérieur de la salle.
+9. La capacité maximale de la salle doit être respectée pour des raisons de sécurité.
+10. En cas d'évacuation ou d'alerte, suivre les instructions du personnel de sécurité et se diriger calmement vers les issues de secours.
+11. Vestiaire et effets personnels sous la responsabilité de leur propriétaire ; l'organisation décline toute responsabilité en cas de perte ou de vol.
+12. La participation à cet événement implique l'acceptation pleine et entière du présent règlement.`;
+
+async function loadInfos(){
+  try{
+    const res = await window.storage.get(STORAGE_INFO_KEY, true);
+    const data = res ? JSON.parse(res.value) : {lieu:'', reglement:'', vipDescription:''};
+    document.getElementById('lieuView').textContent = data.lieu || 'Non renseigné';
+    document.getElementById('lieuView').classList.toggle('empty', !data.lieu);
+    document.getElementById('reglementView').textContent = data.reglement || DEFAULT_REGLEMENT;
+    document.getElementById('lieuInput').value = data.lieu || '';
+    document.getElementById('reglementInput').value = data.reglement || DEFAULT_REGLEMENT;
+    document.getElementById('vipDescInput').value = data.vipDescription || '';
+    document.getElementById('vipDescView').textContent = data.vipDescription || 'Non renseigné pour le moment.';
+  }catch(e){
+    document.getElementById('reglementView').textContent = DEFAULT_REGLEMENT;
+    document.getElementById('reglementInput').value = DEFAULT_REGLEMENT;
+    console.log('Pas encore d\'infos enregistrées.');
+  }
+}
+
+async function saveInfos(){
+  const lieu = document.getElementById('lieuInput').value.trim();
+  const reglement = document.getElementById('reglementInput').value.trim();
+  const vipDescription = document.getElementById('vipDescInput').value.trim();
+  try{
+    await window.storage.set(STORAGE_INFO_KEY, JSON.stringify({lieu, reglement, vipDescription}), true);
+    await loadInfos();
+    document.getElementById('editCard').classList.add('hidden');
+  }catch(e){
+    alert("Erreur lors de l'enregistrement, réessaie.");
+  }
+}
+
+async function getIndex(){
+  try{
+    const res = await window.storage.get(STORAGE_INDEX_KEY, true);
+    return res ? JSON.parse(res.value) : [];
+  }catch(e){
+    return [];
+  }
+}
+
+async function addEntry(){
+  const nom = document.getElementById('nomInput').value.trim();
+  const verres = parseInt(document.getElementById('verresInput').value, 10) || 0;
+  const vip = document.getElementById('vipInput').checked;
+  if(!nom){ alert('Indique un nom.'); return; }
+  const id = 'e' + Date.now() + Math.floor(Math.random()*1000);
+  try{
+    await window.storage.set('entry:' + id, JSON.stringify({nom, verres, vip}), true);
+    const idx = await getIndex();
+    idx.push(id);
+    await window.storage.set(STORAGE_INDEX_KEY, JSON.stringify(idx), true);
+    document.getElementById('nomInput').value = '';
+    document.getElementById('verresInput').value = 1;
+    document.getElementById('vipInput').checked = false;
+    await loadEntries();
+  }catch(e){
+    alert("Erreur lors de l'ajout, réessaie.");
+  }
+}
+
+async function loadEntries(){
+  const idx = await getIndex();
+  const body = document.getElementById('entriesBody');
+  if(idx.length === 0){
+    body.innerHTML = '<tr><td colspan="3" style="color:var(--muted);">Aucune entrée pour l\'instant.</td></tr>';
+    document.getElementById('statVerres').textContent = 0;
+    document.getElementById('statVip').textContent = 0;
+    document.getElementById('statPersonnes').textContent = 0;
+    return;
+  }
+  let rows = '';
+  let totalVerres = 0, totalVip = 0;
+  for(const id of idx){
+    try{
+      const res = await window.storage.get('entry:' + id, true);
+      if(!res) continue;
+      const e = JSON.parse(res.value);
+      totalVerres += (e.verres || 0);
+      if(e.vip) totalVip++;
+      rows += `<tr><td>${escapeHtml(e.nom)}</td><td>${e.verres}</td><td>${e.vip ? '<span class="vip-badge">VIP</span>' : ''}</td></tr>`;
+    }catch(e){ /* entrée manquante, on ignore */ }
+  }
+  body.innerHTML = rows || '<tr><td colspan="3" style="color:var(--muted);">Aucune entrée pour l\'instant.</td></tr>';
+  document.getElementById('statVerres').textContent = totalVerres;
+  document.getElementById('statVip').textContent = totalVip;
+  document.getElementById('statPersonnes').textContent = idx.length;
+}
+
+async function resetEntries(){
+  if(!confirm('Effacer toutes les entrées enregistrées ?')) return;
+  const idx = await getIndex();
+  for(const id of idx){
+    try{ await window.storage.delete('entry:' + id, true); }catch(e){}
+  }
+  await window.storage.set(STORAGE_INDEX_KEY, JSON.stringify([]), true);
+  await loadEntries();
+}
+
+const VIP_INDEX_KEY = 'vip-requests-index';
+
+async function getVipIndex(){
+  try{
+    const res = await window.storage.get(VIP_INDEX_KEY, true);
+    return res ? JSON.parse(res.value) : [];
+  }catch(e){
+    return [];
+  }
+}
+
+async function submitVipRequest(){
+  const nom = document.getElementById('vipReqNom').value.trim();
+  if(!nom){ alert('Indique ton nom.'); return; }
+  const id = 'v' + Date.now() + Math.floor(Math.random()*1000);
+  try{
+    await window.storage.set('vip-req:' + id, JSON.stringify({nom, status:'pending'}), true);
+    const idx = await getVipIndex();
+    idx.push(id);
+    await window.storage.set(VIP_INDEX_KEY, JSON.stringify(idx), true);
+    document.getElementById('vipReqNom').value = '';
+    document.getElementById('vipReqConfirm').classList.remove('hidden');
+  }catch(e){
+    alert("Erreur lors de l'envoi, réessaie.");
+  }
+}
+
+async function checkVipStatus(){
+  const nom = document.getElementById('vipCheckNom').value.trim().toLowerCase();
+  const resultEl = document.getElementById('vipCheckResult');
+  if(!nom){ resultEl.textContent = 'Indique ton nom.'; return; }
+  const idx = await getVipIndex();
+  let found = null;
+  for(const id of idx){
+    try{
+      const res = await window.storage.get('vip-req:' + id, true);
+      if(!res) continue;
+      const r = JSON.parse(res.value);
+      if(r.nom.trim().toLowerCase() === nom){ found = r; }
+    }catch(e){}
+  }
+  if(!found){ resultEl.textContent = "Aucune demande trouvée à ce nom."; return; }
+  const labels = {pending:'⏳ En attente de validation', approved:'✅ Statut VIP validé !', rejected:'❌ Demande refusée'};
+  resultEl.textContent = labels[found.status] || 'Statut inconnu.';
+}
+
+async function loadPendingVipRequests(){
+  const idx = await getVipIndex();
+  const container = document.getElementById('pendingVipList');
+  let rows = '';
+  for(const id of idx){
+    try{
+      const res = await window.storage.get('vip-req:' + id, true);
+      if(!res) continue;
+      const r = JSON.parse(res.value);
+      if(r.status !== 'pending') continue;
+      rows += `<div class="pending-item"><span>${escapeHtml(r.nom)}</span>
+        <span class="pending-actions">
+          <button class="btn-approve" onclick="resolveVip('${id}', true)">Valider</button>
+          <button class="btn-reject" onclick="resolveVip('${id}', false)">Refuser</button>
+        </span></div>`;
+    }catch(e){}
+  }
+  container.innerHTML = rows || '<p style="color:var(--muted);font-size:0.88rem;">Aucune demande en attente.</p>';
+}
+
+async function resolveVip(id, approve){
+  try{
+    const res = await window.storage.get('vip-req:' + id, true);
+    if(!res) return;
+    const r = JSON.parse(res.value);
+    r.status = approve ? 'approved' : 'rejected';
+    await window.storage.set('vip-req:' + id, JSON.stringify(r), true);
+
+    if(approve){
+      // Marque ou crée l'entrée correspondante dans le suivi conso avec VIP = true
+      const idx = await getIndex();
+      let matched = false;
+      for(const eid of idx){
+        const eres = await window.storage.get('entry:' + eid, true);
+        if(!eres) continue;
+        const e = JSON.parse(eres.value);
+        if(e.nom.trim().toLowerCase() === r.nom.trim().toLowerCase()){
+          e.vip = true;
+          await window.storage.set('entry:' + eid, JSON.stringify(e), true);
+          matched = true;
+          break;
+        }
+      }
+      if(!matched){
+        const newId = 'e' + Date.now() + Math.floor(Math.random()*1000);
+        await window.storage.set('entry:' + newId, JSON.stringify({nom:r.nom, verres:0, vip:true}), true);
+        idx.push(newId);
+        await window.storage.set(STORAGE_INDEX_KEY, JSON.stringify(idx), true);
+      }
+      await loadEntries();
+    }
+    await loadPendingVipRequests();
+  }catch(e){
+    alert('Erreur, réessaie.');
+  }
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderQr(elId, hash){
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  new QRCode(el, {
+    text: baseUrl() + '#' + hash,
+    width: 160,
+    height: 160,
+    colorDark: '#120E28',
+    colorLight: '#ffffff'
+  });
+}
+
+(async function init(){
+  await loadInfos();
+  await loadEntries();
+  renderQr('qrInfos', 'infos');
+  renderQr('qrSuivi', 'suivi');
+  const hash = window.location.hash.replace('#','');
+  showTab(hash === 'suivi' ? 'suivi' : 'infos');
+})();
+</script>
+</body>
+</html>
